@@ -1,0 +1,161 @@
+
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "./ui/button"
+import { Input } from "@/components/ui/input"
+import { Plus, Upload } from "lucide-react"
+import React from "react";
+import { Separator } from "@/components/ui/separator";
+import { API_BASE } from "@/app/api";
+
+
+export type UploadDoc = {
+    id: string,
+    file_name:string,
+    status:"uploaded" | "indexing" | "ready" | "failed" 
+}
+
+export function UploadDocument({workspace_id}:
+    {workspace_id:string}) {
+    
+    const [open, setOpen] = React.useState(false);
+    const [doc,setDoc] = React.useState<File | null>(null);
+    const [documents,setDocuments] = React.useState<UploadDoc[]>([]);
+
+    async function loadDocuments() {
+            const res = await fetch(`${API_BASE}/docs/${workspace_id}/documents`,{
+                cache:"no-store",
+            });
+            if (!res.ok) return
+            const rows: Array<UploadDoc> = await res.json();
+
+            setDocuments(
+                rows.map((m)=> ({
+                    id: m.id,
+                    file_name: m.file_name,
+                    status: m.status
+                }))
+            );
+
+            
+        }
+
+    React.useEffect(()=> {
+        loadDocuments();
+    },[workspace_id])
+
+    React.useEffect(()=>{
+        const hasPending = documents.some((d)=>d.status === "uploaded" || d.status === "indexing")
+        if (!hasPending) return
+        const id = setInterval(loadDocuments,3000)
+        return () => clearInterval(id);
+    },[documents,workspace_id])
+
+
+    async function uploadDoc() {
+        if (doc === null) return
+        if (!doc.name.toLocaleLowerCase().endsWith(".pdf")) return
+        if (documents.some((d) => d.file_name === doc.name && d.status !== "failed")) {
+            console.error("Document already uploaded")
+            return;
+        }
+
+
+
+        const form = new FormData()
+        form.append("file",doc)
+
+        const res = await fetch(
+            `${API_BASE}/docs/upload?workspace_id=${encodeURIComponent(workspace_id)}`,
+            {
+            method: "POST",
+            body: form,
+            }
+        );
+
+        if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+        await res.json();
+        setDoc(null)
+        await loadDocuments()
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+            <Button variant="outline"  size="icon" className="cursor-pointer">
+                <Upload className="w-5 h-5"/>
+            </Button>
+        </DialogTrigger>
+        <DialogContent className="lg:w-[70vw] lg:max-w-[1000px] lg:h-[40vh] h-[70vh] p-0">
+            <DialogTitle className="hidden"></DialogTitle>
+            
+            <div className="grid h-full grid-rows-[1fr_auto] lg:grid-rows-1 lg:grid-cols-[2fr_1fr]">
+                
+                <div className="min-h-0 p-3 sm:p-4">
+                <div className="h-full overflow-auto rounded-md border">
+                    <Table className="w-full">
+                    <TableHeader className="sticky top-0 z-10 bg-background">
+                        <TableRow>
+                        <TableHead>Filename</TableHead>
+                        <TableHead>Status</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {documents.map((d) => (
+                        <TableRow key={d.id}>
+                            <TableCell className="max-w-0 truncate text-xs sm:text-sm">{d.file_name}</TableCell>
+                            <TableCell className="text-muted-foreground text-xs sm:text-sm">{d.status}</TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                    </Table>
+                </div>
+                </div>
+
+                <div className="border-t p-3 md:border-t-0 md:border-l">
+                    <div className="space-y-2">
+                        <h4 className="leading-none font-medium">Upload new document</h4>
+                        <p className="text-muted-foreground text-sm">
+                            Only PDF allowed
+                        </p>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                        <Input
+                            type="file"
+                            className="col-span-2 h-16"
+                            onChange={(val)=> setDoc(val.target.files?.[0] ?? null)}
+                        />
+                        <Button 
+                        variant={"outline"} 
+                        className="w-full cursor-pointer" 
+                        onClick={uploadDoc} disabled={!doc}
+                        >Upload</Button>
+                    </div>
+                    
+                </div>
+            </div>
+            
+        </DialogContent>
+        </Dialog>
+    )
+}

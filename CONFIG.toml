@@ -1,0 +1,12 @@
+pdf_path = "data/pdfs"
+parsed_path = "data/parsed"
+chunks_path = "data/chunks"
+
+[chroma]
+PERSIST_DIR = "data/chroma"
+EMBED_MODEL = "BAAI/bge-small-en-v1.5"
+
+[server]
+upload_path = "data/uploads"
+model_name = "llama3:8b-instruct-q4_K_M"
+model_url = "http://localhost:11434/api/generate"
