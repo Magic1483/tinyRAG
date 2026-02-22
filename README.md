@@ -10,14 +10,14 @@ Local-first RAG assistant with:
 
 ## Demo 
 
-<img src="./docs/chat_example.png" style="width:70%">
+![](./docs/chat_example.png)
 
 <details>
   <summary>More screenshots</summary>
   
-  <img src="./docs/0222.gif" style="width:70%">
-  <img src="./docs/main_page.png" style="width:70%">  
-  <img src="./docs/upload_dashboad.png" >
+  ![](./docs/0222.gif)
+  ![](./docs/main_page.png)
+  ![](./docs/upload_dashboad.png)
 </details>
 
 ## Features
