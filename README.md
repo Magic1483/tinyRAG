@@ -11,6 +11,14 @@ Local-first RAG assistant with:
 ## Demo 
 ![](./docs/0222.gif)
 
+<details>
+  <summary>Screenshots</summary>
+
+  <img src="./docs/main_page.png" style="width:70%">
+  <img src="./docs/chat_example.png" style="width:70%">
+  <img src="./docs/upload_dashboad.png" >
+</details>
+
 ## Features
 - Workspace and chat management
 - PDF upload and background indexing
