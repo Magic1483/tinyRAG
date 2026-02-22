@@ -8,7 +8,7 @@ export default function Home() {
         <h1 className="font-blid text-5xl italic text-center text-stone-600">tinyRAG</h1>
         <div className="text-stone-800 mt-2">
           <p >
-            tinyRAG is local first RAG system that let you chat locally with your .PDF documents
+            tinyRAG is a local-first retrieval-augmented chat app for PDF documents
           </p>
           <div className="text-start mt-4">
             <span className="italic text-2xl">Features</span>
@@ -16,9 +16,9 @@ export default function Home() {
               <li>Workspace and chat management</li>
               <li>PDF upload and background indexing</li>
               <li>Streaming chat responses (SSE)</li>
-              <li>Source citations</li>
+              <li>All core data stays on your machine: SQLite + ChromaDB</li>
               <li>Markdown/LaTeX rendering in chat</li>
-              <li>Local/LAN usage support</li>
+              <li>Use it on LAN by pointing clients to your backend host</li>
             </ul>
             <div className="text-sm mt-6">
               Current version - 0.1.0 alpha

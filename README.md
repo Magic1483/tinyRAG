@@ -1,4 +1,5 @@
-# tinyRAG
+# tinyRAG 🍜
+
 
 Local-first RAG assistant with:
 - Next.js frontend (`frontend/`)
@@ -6,13 +7,17 @@ Local-first RAG assistant with:
 - ChromaDB vector store (`data/chroma`)
 - SQLite app database (`data/app.db`)
 
+
+## Demo 
+![](./docs/0222.gif)
+
 ## Features
 - Workspace and chat management
 - PDF upload and background indexing
 - Streaming chat responses (SSE)
-- Source citations
+- All core data stays on your machine: SQLite + ChromaDB
 - Markdown/LaTeX rendering in chat
-- Local/LAN usage support
+- Use it on LAN by pointing clients to your backend host
 
 ## Architecture
 - Frontend: Next.js + React + shadcn/ui
@@ -21,7 +26,6 @@ Local-first RAG assistant with:
 - Persistence: SQLite for app entities and metadata
 
 ## Requirements
-- Windows 10/11 (PowerShell)
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/)
 - Node.js 20+
@@ -29,8 +33,12 @@ Local-first RAG assistant with:
 - Ollama running with your selected model
 
 ## Quick Start (Windows)
+1. Setup requirements
+- Fast API `uv sync`
+- Next.JS `pnpm install` (inside frontend directory)
 
 2. Start backend + frontend:
+
 ```powershell
 .\Start.ps1
 ```
@@ -89,15 +97,13 @@ frontend/
   package.json
 ```
 
-## Troubleshooting
-- `crypto.randomUUID is not a function` on LAN:
-  - Use a fallback ID generator in client code.
-
-## Known Limitations
-- Retrieval is currently vector-first (hybrid search planned).
-
 ## Roadmap
 - Hybrid retrieval (vector + keyword)
 - Config/settings UI
 - Improved evaluation and observability
 - Optional packaging for non-dev users
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
+See the [LICENSE](./LICENSE) file for details.
