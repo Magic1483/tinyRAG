@@ -1,5 +1,6 @@
 
 from fastapi import FastAPI,File,UploadFile,Query,BackgroundTasks,HTTPException
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 import uuid
 from pathlib import Path
@@ -137,8 +138,7 @@ async def process_document(doc_id:str, workspace_id:str, original_name:str, pdf_
 
 
 
-
-
+app.mount("/app",StaticFiles(directory="../frontend_lite",html=True),name='app')
 
 @app.on_event("startup")
 def _startup():
@@ -200,6 +200,33 @@ async def upload_doc(
 @app.get("/chats/{chat_id}/messages")
 async def get_chat_messages(chat_id:str, limit:int = 200):
     return database.get_recent_messages(chat_id,limit=limit)
+
+@app.post("/chat")
+async def chat(payload:dict):
+    workspace_id = payload.get("workspace_id")
+    chat_id = payload.get("chat_id")
+    query = payload.get("query")
+    k = int(payload.get("k",5))
+
+    if not query or not workspace_id or not chat_id:
+        return {"error": "Missing query/workspace_id/chat_id"}
+    
+    database.add_message(chat_id,"user",query)
+    history = database.get_recent_messages(chat_id,limit=10)
+
+    qvec = model.encode([query],normalize_embeddings=True)[0].tolist()
+    hits = store.chroma_search(workspace_id,qvec,k=k)
+
+    prompt = build_prompt(query,hits,history)
+    answer = await generate_answer(prompt)
+    if answer:
+        database.add_message(chat_id,"assistant",answer)
+
+    return {
+        "content":answer,
+        "role":"assistant"
+    }
+
 
 @app.post("/chat/stream")
 async def chat_stream(payload:dict):

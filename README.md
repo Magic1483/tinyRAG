@@ -1,6 +1,5 @@
 # tinyRAG 🍜
 
-
 Local-first RAG assistant with:
 - Next.js frontend (`frontend/`)
 - FastAPI backend (`api.py`)
@@ -93,18 +92,26 @@ uv run uvicorn api:app --host 0.0.0.0 --port 8000
 
 ## Project Structure
 ```text
-api.py
-chroma.py
-database.py
-CONFIG.toml
-shared.py
+src/
+  api.py
+  chroma.py
+  database.py
+  CONFIG.toml
+  shared.py
 Start.ps1
-Setup.ps1
 frontend/
   app/
   components/
   package.json
+frontend_lite
+testing/
+  tinyAgent
 ```
+
+## Testing features
+- **frontend_lite** - small frontend version without framework dependecies
+- **tinyAgent** - my approach to make tiny _codex_ like agent (very early stage)
+
 
 ## Roadmap
 - Hybrid retrieval (vector + keyword)
