@@ -19,9 +19,28 @@ Local-first RAG assistant with:
   ![](./docs/upload_dashboad.png)
 </details>
 
+## What's New in v0.2.0
+
+- Added true hybrid retrieval:
+  - dense vector retrieval (Chroma)
+  - sparse lexical retrieval (BM25)
+  - rank fusion with RRF
+- Added optional HyDE retrieval branch for ambiguous queries.
+- Added page metadata support for chunk citations.
+- Expanded retrieval testing with RFC2812 benchmark scenarios.
+
+### Retrieval Modes
+
+1. Vector only
+2. Vector + BM25 (default recommended)
+3. Vector + BM25 + HyDE (optional, best for some vague queries)
+
+
 ## Features
 - Workspace and chat management
 - PDF upload and background indexing
+- Hybrid search + HyDE
+- JSON chat exporting
 - Streaming chat responses (SSE)
 - All core data stays on your machine: SQLite + ChromaDB
 - Markdown/LaTeX rendering in chat
@@ -98,6 +117,7 @@ src/
   database.py
   CONFIG.toml
   shared.py
+  hybrid_search.py
 Start.ps1
 frontend/
   app/
@@ -110,7 +130,7 @@ testing/
 
 ## Testing features
 - **frontend_lite** - small frontend version without framework dependecies
-- **tinyAgent** - my approach to make tiny _codex_ like agent (very early stage)
+- **tinyAgent**     - my approach to make tiny _codex_ like agent (very early stage)
 
 
 ## Roadmap

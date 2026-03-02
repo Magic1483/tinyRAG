@@ -18,7 +18,7 @@ type ChatMessage = {
 
 type Citation = {
     file_name: string,
-    chunk_id: string
+    page: string
 }
 
 
@@ -84,6 +84,13 @@ export function ChatWindow({
         const text = input.trim();
         if (!text || isSending) return;
 
+
+        let use_hyde:boolean = false
+        if (localStorage.getItem("use_hyde_"+workspace_id) === "true") use_hyde = true
+
+        let use_bm25 = false
+        if (localStorage.getItem("use_bm25_"+workspace_id) === "true") use_bm25 = true
+
         setInput("");
         setIsSending(true);
         setCitations([])
@@ -106,6 +113,8 @@ export function ChatWindow({
                     chat_id: chat_id,
                     query: text,
                     k: 6,
+                    use_hyde: use_hyde,
+                    use_bm25: use_bm25
                 }),
             });
 
@@ -217,7 +226,7 @@ export function ChatWindow({
                             variant={"outline"} className="cursor-pointer">
                             {isSending ? "…" : "Send"}
                         </Button>
-                        <UploadDocument workspace_id={workspace_id}/>
+                        <UploadDocument workspace_id={workspace_id} messages={renderedMessages} />
                     </div>
 
                     </div>

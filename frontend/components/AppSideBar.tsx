@@ -62,6 +62,7 @@ export function AppSidebar() {
         setWorkspaces(prev => prev.filter(ws => ws.id !== workspaceId));
     }
 
+    
 
     function WsButton({ text, ws_id, chat_id, ...props }: WsButtonProps) {
         return (
@@ -84,7 +85,7 @@ export function AppSidebar() {
     return (
         <Sidebar>
             <SidebarHeader className="flex flex-row gap-2 items-center">
-                <span className="text-xl ">Workspaces</span>
+                <span className="text-xl "><a href="/">Workspaces</a></span>
                 <NewWorkspace onCreated={onWorkspaceCreated} />
             </SidebarHeader>
             <SidebarContent className="p-2">

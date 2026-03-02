@@ -15,13 +15,15 @@ export default function Home() {
             <ul className="list-[circle] ml-5 " >
               <li>Workspace and chat management</li>
               <li>PDF upload and background indexing</li>
+              <li>Hybrid search + HyDE</li>
+              <li>JSON chat exporting</li>
               <li>Streaming chat responses (SSE)</li>
               <li>All core data stays on your machine: SQLite + ChromaDB</li>
               <li>Markdown/LaTeX rendering in chat</li>
               <li>Use it on LAN by pointing clients to your backend host</li>
             </ul>
             <div className="text-sm mt-6">
-              Current version - 0.1.0 alpha
+              Current version - 0.2.0 alpha
             </div>
           </div>
         </div>

@@ -9,7 +9,7 @@ import traceback
 import json
 import logging
 
-CONFIG = toml.load('../CONFIG.toml')
+CONFIG = toml.load('CONFIG.toml')
 
 def validate(schema:Dict[str,Any], args: Any) -> bool:
     if not isinstance(args,dict):
@@ -163,4 +163,4 @@ def agent_loop(goal:str, max_steps:int = 8, max_actions_per_step:int = 4) -> str
 
 
 if __name__ == "__main__":
-    print(agent_loop("Search recursively under '.' for the first file ending with .mp3. If found, call play_audio with that relative path. If not found, set final to No mp3 found", max_steps=10))
+    print(agent_loop("PLay audio 'INside Job opening' from music folder", max_steps=10))

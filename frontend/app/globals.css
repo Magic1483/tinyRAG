@@ -183,6 +183,12 @@ html, body { height: 100%; overflow: hidden; }
 
 
 
+@layer utilities {
+  .prose :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *))::before, .prose :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *))::after {
+    content: "";
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

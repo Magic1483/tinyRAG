@@ -47,7 +47,8 @@ class ChromaStore:
                     "file_name" : original_name,
                     "chunk_id": c.chunk_id,
                     "start_char": c.start_char,
-                    "end_char": c.end_char
+                    "end_char": c.end_char,
+                    "page": c.page
                 } 
                 for c in chunks
             ]
@@ -81,3 +82,19 @@ class ChromaStore:
             })
         return out
 
+    def chrome_all(self, collection_name:str,where=None):
+        collection = self.client.get_or_create_collection(collection_name)
+        res = collection.get(include=['documents','metadatas'],where=where)
+
+        ids = res.get("ids") or []
+        docs = res.get("documents") or []
+        metas = res.get("metadatas") or []
+
+        out = []
+        for i in range(len(ids)):
+            out.append({
+                "id": ids[i],
+                "text": docs[i] if i < len(docs) else "",
+                "meta": metas[i] if i < len(metas) else {}
+            })
+        return out

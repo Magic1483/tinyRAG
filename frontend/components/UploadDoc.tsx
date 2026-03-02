@@ -20,6 +20,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "./ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,7 +30,7 @@ import { Plus, Upload } from "lucide-react"
 import React from "react";
 import { Separator } from "@/components/ui/separator";
 import { API_BASE } from "@/app/api";
-
+import type { ChatMessage } from "./ChatMessages";
 
 export type UploadDoc = {
     id: string,
@@ -35,12 +38,17 @@ export type UploadDoc = {
     status:"uploaded" | "indexing" | "ready" | "failed" 
 }
 
-export function UploadDocument({workspace_id}:
-    {workspace_id:string}) {
+export function UploadDocument({workspace_id,messages}:
+    {
+        workspace_id:string,
+        messages: ChatMessage[]
+    }) {
     
     const [open, setOpen] = React.useState(false);
     const [doc,setDoc] = React.useState<File | null>(null);
     const [documents,setDocuments] = React.useState<UploadDoc[]>([]);
+    const [hyde,setHyde] = React.useState<boolean>(false);
+    const [bm25,setBm25] = React.useState<boolean>(false);
 
     async function loadDocuments() {
             const res = await fetch(`${API_BASE}/docs/${workspace_id}/documents`,{
@@ -57,11 +65,14 @@ export function UploadDocument({workspace_id}:
                 }))
             );
 
-            
+            if (localStorage.getItem("use_hyde_"+workspace_id) === "true") setHyde(true)
+            if (localStorage.getItem("use_bm25_"+workspace_id) === "true") setBm25(true)
         }
 
     React.useEffect(()=> {
         loadDocuments();
+
+        
     },[workspace_id])
 
     React.useEffect(()=>{
@@ -71,6 +82,14 @@ export function UploadDocument({workspace_id}:
         return () => clearInterval(id);
     },[documents,workspace_id])
 
+    function toggle_hyde(e:boolean) {
+        localStorage.setItem("use_hyde_"+workspace_id,e === true ? "true" : "false")
+        setHyde(e)
+    }
+    function toggle_bm25(e:boolean) {
+        localStorage.setItem("use_bm25_"+workspace_id,e === true ? "true" : "false")
+        setBm25(e)
+    }
 
     async function uploadDoc() {
         if (doc === null) return
@@ -97,6 +116,17 @@ export function UploadDocument({workspace_id}:
         await res.json();
         setDoc(null)
         await loadDocuments()
+    }
+
+    function export_chat() {
+        const content = JSON.stringify(messages,null,4)
+        const el = document.createElement("a")
+        const file = new Blob([content],{'type':"application/json"})
+        el.href = URL.createObjectURL(file)
+        el.download = 'chat.json'
+        document.body.appendChild(el)
+        el.click()
+        document.body.removeChild(el);
     }
 
     return (
@@ -150,6 +180,27 @@ export function UploadDocument({workspace_id}:
                         className="w-full cursor-pointer" 
                         onClick={uploadDoc} disabled={!doc}
                         >Upload</Button>
+
+                        <div className="flex flex-row gap-2 font-nroma w-fulll">
+                            <Switch id="use_hyde" 
+                            onCheckedChange={toggle_hyde}
+                            checked={hyde}
+                            />
+                            <Label htmlFor="use_hyde">Use HyDE</Label>
+                        </div>
+                        <div className="flex flex-row gap-2 font-nromal w-full">
+                            <Switch id="use_bm25" 
+                            onCheckedChange={toggle_bm25}
+                            checked={bm25}
+                            />
+                            <Label htmlFor="use_bm25">Use BM25 - text search</Label>
+                        </div>
+                        <Button 
+                        variant={"outline"} 
+                        className="w-full cursor-pointer" 
+                        onClick={export_chat}
+                        >Export Chat</Button>
+                        
                     </div>
                     
                 </div>

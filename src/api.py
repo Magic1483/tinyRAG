@@ -14,6 +14,7 @@ import database
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import shared
+from hybrid_search import bm25_search,rrf_fuse
 
 CONFIG = shared.get_config()
 UPLOAD_DIR  = Path(CONFIG['server']['upload_path'])
@@ -111,34 +112,76 @@ Question:
 Answer:
 """
 
+def build_hyde_prompt(query:str) -> str:
+    return f"""
+Write a concise hypothetical answer passage that could appear in relevant documents.
+Return only passage text.“Use neutral generic wording, no invented facts, no numbers unless in query.
+
+Question:
+{query}
+
+Passage:
+"""
+
+async def generate_hyde_passage(query:str) -> str:
+    try:
+        return (await generate_answer(build_hyde_prompt(query))).strip()
+    except Exception:
+        return ""
+
+async def hybrid_search(workspace_id:str, query:str, 
+    query_embedding:list[float],k:int=5, use_hyde=True,use_bm25=True
+    ) -> list[dict]:
+    """
+    Hybrid search: vector candidates from chroma + lexical overlap rerank
+    """
+    candidate_k = max(k*4, 20)
+    
+    dense_hits = store.chroma_search(workspace_id,query_embedding,k=candidate_k)
+    lists = [dense_hits]
+
+    if use_bm25:
+        all_docs = store.chrome_all(workspace_id)
+        sparse_list = bm25_search(query,all_docs,k=candidate_k)
+        lists.append(sparse_list)
+    
+    
+
+    if use_hyde:
+        hyde_passage = await generate_hyde_passage(query)
+        print('fake answer is ',hyde_passage)
+        if hyde_passage:
+            hyde_vec = model.encode([hyde_passage], normalize_embeddings=True)[0].tolist()
+            hyde_hits = store.chroma_search(workspace_id,hyde_vec,k=candidate_k)
+            lists.append(hyde_hits)
+    
+    return rrf_fuse(lists, top_k=60)
+
 
 async def process_document(doc_id:str, workspace_id:str, original_name:str, pdf_path:Path):
     try:
         database.update_document_status(doc_id,"indexing") 
 
         pages = await asyncio.to_thread(parse_pdf_to_pages,pdf_path)
-        full_text = clean_text("\n\n".join(pages))
-        chunks = chunk_text(full_text,CHUNK_SIZE_CHARS,CHUNK_OVERLAP_CHARS)
-        if not chunks:
-            database.update_document_status(doc_id,"failed","no chunks")
-            return
+        all_chunks = []
+        for i, page_text in enumerate(pages,start=1):
+            page_chunks = chunk_text(page_text,i,CHUNK_SIZE_CHARS,CHUNK_OVERLAP_CHARS)
+            all_chunks.extend(page_chunks) 
         
-        texts = [c.text for c in chunks]
+        texts = [c.text for c in all_chunks]
         vectors = await asyncio.to_thread(
             lambda: model.encode(texts, normalize_embeddings=True, batch_size=32).tolist()
         )
         await asyncio.to_thread(
-            store.chroma_upsert, workspace_id, doc_id, original_name, chunks, vectors
+            store.chroma_upsert, workspace_id, doc_id, original_name, all_chunks, vectors
         )
 
         database.update_document_status(doc_id,"ready")
     except Exception as e:
+        print('error upload doc',e)
         database.update_document_status(doc_id,"failed",str(e))
 
 
-
-
-app.mount("/app",StaticFiles(directory="../frontend_lite",html=True),name='app')
 
 @app.on_event("startup")
 def _startup():
@@ -207,6 +250,8 @@ async def chat(payload:dict):
     chat_id = payload.get("chat_id")
     query = payload.get("query")
     k = int(payload.get("k",5))
+    use_hyde = payload.get("use_hyde",False)
+    use_bm25 = payload.get("use_bm25",False)
 
     if not query or not workspace_id or not chat_id:
         return {"error": "Missing query/workspace_id/chat_id"}
@@ -215,7 +260,7 @@ async def chat(payload:dict):
     history = database.get_recent_messages(chat_id,limit=10)
 
     qvec = model.encode([query],normalize_embeddings=True)[0].tolist()
-    hits = store.chroma_search(workspace_id,qvec,k=k)
+    hits = await hybrid_search(workspace_id,query,qvec,k=k,use_hyde=use_hyde,use_bm25=use_bm25)
 
     prompt = build_prompt(query,hits,history)
     answer = await generate_answer(prompt)
@@ -234,6 +279,8 @@ async def chat_stream(payload:dict):
     chat_id = payload.get("chat_id")
     query = payload.get("query")
     k = int(payload.get("k",5))
+    use_hyde = payload.get("use_hyde",False)
+    use_bm25 = payload.get("use_bm25",False)
 
     if not query or not workspace_id or not chat_id:
         return {"error": "Missing query/workspace_id/chat_id"}
@@ -242,13 +289,13 @@ async def chat_stream(payload:dict):
     history = database.get_recent_messages(chat_id,limit=10)
 
     qvec = model.encode([query],normalize_embeddings=True)[0].tolist()
-    hits = store.chroma_search(workspace_id,qvec,k=k)
+    hits = await hybrid_search(workspace_id,query,qvec,k=k,use_hyde=use_hyde,use_bm25=use_bm25)
 
     prompt = build_prompt(query,hits,history)
 
     async def event_gen():
         citation = [
-            {"file_name":h['meta']['file_name'], "chunk_id":h['meta']['chunk_id']} 
+            {"file_name":h['meta']['file_name'], "page":h['meta']['page']} 
             for h in hits
         ]
         yield f"event: citations\ndata: {json.dumps(citation)}\n\n"
@@ -292,11 +339,13 @@ async def search(payload:dict):
     query: Optional[str] = payload.get("query")
     workspace_id: Optional[str] = payload.get("workspace_id")
     k:int = int(payload.get("k",5))
+    use_hyde = payload.get("use_hyde",False)
+    use_bm25 = payload.get("use_bm25",False)
 
     if not query or not workspace_id:
         return {"err":"missing query/workspace_id"}
     
     qvec = model.encode([query],normalize_embeddings=True)[0].tolist()
-    hits = store.chroma_search(workspace_id,qvec,k=k)
+    hits = await hybrid_search(workspace_id,query,qvec,k=k,use_hyde=use_hyde,use_bm25=use_bm25)
 
     return {"query":query,"k":k,"matches":hits}

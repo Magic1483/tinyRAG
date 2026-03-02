@@ -14,6 +14,7 @@ class Chunk:
     text: str
     start_char: int
     end_char: int
+    page:int
 
 def clean_text(s:str) -> str:
     s = s.replace("\x00", "")
@@ -31,7 +32,7 @@ def parse_pdf_to_pages(path:Path) -> Dict:
         pages.append(t)
     return pages
 
-def chunk_text(text:str, chunk_size:int = 3500, overlap: int = 400) -> List[Chunk]:
+def chunk_text(text:str, page:int, chunk_size:int = 3500, overlap: int = 400) -> List[Chunk]:
     text = text.strip()
     if not text: return []
 
@@ -49,10 +50,11 @@ def chunk_text(text:str, chunk_size:int = 3500, overlap: int = 400) -> List[Chun
         if chunk:
             chunks.append(
                 Chunk(
-                    chunk_id=f'chunk_{chunk_idx:05d}',
+                    chunk_id=f'chunk_{chunk_idx:05d}:{page}',
                     text=chunk,
                     start_char=start,
-                    end_char=end
+                    end_char=end,
+                    page=page
                 )
             )
             chunk_idx += 1

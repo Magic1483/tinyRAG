@@ -2,8 +2,8 @@
 import React from "react"
 import { MarkdownMessage } from "./MarkdownMessage"
 
-type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
-type Citation = { file_name: string; chunk_id: string };
+export type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
+export type Citation = { file_name: string; page: string };
 
 
 export const ChatMessages = React.memo(function ChatMessages({
@@ -31,19 +31,20 @@ export const ChatMessages = React.memo(function ChatMessages({
                         }
                     </div>
                 ))}
+
+                {citations.length > 0 && (
+                    <div className="mt-2 text-xs text-muted-foreground lg:max-w-[70%] w-[95%]">
+                        <span className="font-semibold">Sources: </span>
+                        {citations.map((c, i) => (
+                            <span key={`${c.file_name}-${c.page}-${i}`}>
+                                {" • "} {c.file_name} page {c.page}
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
 
-            {/* {citations.length > 0 && (
-                <div className="mt-2 text-xs text-muted-foreground">
-                    Sources:{" "}
-                    {citations.map((c, i) => (
-                        <span key={`${c.file_name}-${c.chunk_id}-${i}`}>
-                            {i > 0 ? " • " : ""}
-                            {c.file_name}
-                        </span>
-                    ))}
-                </div>
-            )} */}
+
         </div>
     )
 })
