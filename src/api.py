@@ -140,13 +140,17 @@ async def hybrid_search(workspace_id:str, query:str,
     dense_hits = store.chroma_search(workspace_id,query_embedding,k=candidate_k)
     lists = [dense_hits]
 
+    """
+    1. Get all collection from chrome
+    2. Search with BM25
+    3. append results to others
+    """
     if use_bm25:
         all_docs = store.chrome_all(workspace_id)
         sparse_list = bm25_search(query,all_docs,k=candidate_k)
         lists.append(sparse_list)
     
     
-
     if use_hyde:
         hyde_passage = await generate_hyde_passage(query)
         print('fake answer is ',hyde_passage)
