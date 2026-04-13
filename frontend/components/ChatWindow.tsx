@@ -33,6 +33,8 @@ export function ChatWindow({
     const [input,setInput]  = React.useState("");
     const [isSending,setIsSending] = React.useState(false);
     const [citations,setCitations] = React.useState<Citation[]>([]);
+    const [UseBM25,setUseBM25]     = React.useState(false)
+    const [UseHyDE,setUseHyDE]     = React.useState(false)
     
     const bottomRef = React.useRef<HTMLDivElement | null>(null);
     const pendingRef = React.useRef<string | null>("");
@@ -87,9 +89,11 @@ export function ChatWindow({
 
         let use_hyde:boolean = false
         if (localStorage.getItem("use_hyde_"+workspace_id) === "true") use_hyde = true
+        setUseHyDE(use_hyde)
 
         let use_bm25 = false
         if (localStorage.getItem("use_bm25_"+workspace_id) === "true") use_bm25 = true
+        setUseBM25(use_bm25)
 
         setInput("");
         setIsSending(true);
@@ -112,7 +116,7 @@ export function ChatWindow({
                     workspace_id: workspace_id,
                     chat_id: chat_id,
                     query: text,
-                    k: 6,
+                    k: 60,
                     use_hyde: use_hyde,
                     use_bm25: use_bm25
                 }),
@@ -198,7 +202,7 @@ export function ChatWindow({
         <div className="flex h-full flex-col pt-12">
             <div className="flex-1 min-h-0">
                 <ScrollArea className="h-full">
-                    <ChatMessages messages={renderedMessages} citations={citations} />
+                    <ChatMessages messages={renderedMessages} citations={citations} UseBM25={UseBM25} UseHyDE={UseHyDE} />
                     <div ref={bottomRef}></div>
                 </ScrollArea>
             </div>

@@ -1,0 +1,2 @@
+- Never write in files directly 
+- ALWAYS provide code in chat only

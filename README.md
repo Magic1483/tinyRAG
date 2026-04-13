@@ -52,6 +52,49 @@ Local-first RAG assistant with:
 - Retrieval: Chroma vector search (workspace-scoped)
 - Persistence: SQLite for app entities and metadata
 
+## Evaluation
+
+### Setup
+- Dataset: 7 fixed questions across RFC2812, RFC3174, RFC6120
+- Modes: `vector`, `vector+bm25`, `vector+hyde`, `vector+bm25+hyde`
+- Retrieval depth: `k=8`
+- Model: `llama3:8b-instruct-q4_K_M`
+- Metrics:
+  - `avg_kw_score`: expected keyword coverage in answer (0..1)
+  - `avg_hit_at_5`: whether gold citation appears in top-5 retrieved chunks
+  - `avg_mrr`: reciprocal rank of first gold chunk
+  - `avg_answer_len`: normalized answer length (0..1, higher = longer)
+
+
+### Mean Metrics by Mode
+
+| mode | avg_kw_score | avg_hit_at_5 | avg_mrr | avg_answer_len |
+|---|---:|---:|---:|---:|
+| vector | 0.686 | 0.714 | 0.536 | 0.926 |
+| vector+bm25 | 0.286 | 0.857 | 0.576 | 1.039 |
+| vector+bm25+hyde | 0.371 | 0.857 | 0.671 | 1.023 |
+| vector+hyde | 0.571 | 0.857 | 0.440 | 1.012 |
+
+
+### Visuals
+
+![Summary by mode](./docs/imgs/summary_by_mode.png)
+_Summary by mode_
+
+![Per-query Hit@5](./docs/imgs/pivot_hit_5.png)
+_Per-query Hit@5_
+
+![Per-query Keyword Score](./docs/imgs/pivot_kw_score.png)
+_Per-query Keyword Score_
+
+![Per-query MRR](./docs/imgs/pivot_mrr.png)
+_Per-query MRR_
+
+### Conclusion
+- `vector+bm25+hyde` gives best ranking quality (`MRR`) but is most expensive (extra HyDE request).
+- `vector+bm25` is the best default tradeoff for quality vs cost.
+
+
 ## Requirements
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/)
@@ -124,14 +167,10 @@ frontend/
   components/
   package.json
 frontend_lite
-testing/
-  tinyAgent
 ```
 
 ## Testing features
 - **frontend_lite** - small frontend version without framework dependecies
-- **tinyAgent**     - my approach to make tiny _codex_ like agent (very early stage)
-
 
 ## Roadmap
 - Hybrid retrieval (vector + keyword)

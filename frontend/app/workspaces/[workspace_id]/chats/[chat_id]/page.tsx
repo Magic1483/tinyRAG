@@ -7,7 +7,7 @@ export default async function ChatPage({
 }) {
   const { workspace_id, chat_id } = await params;
   console.log(workspace_id,chat_id);
-    
+  
   return (
     <div className="h-dvh min-h-0">
       <ChatWindow workspace_id={workspace_id} chat_id={chat_id} />

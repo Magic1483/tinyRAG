@@ -133,7 +133,6 @@ def insert_documents(id,workspace_id,file_name, storead_path,status,error ) -> L
             "INSERT INTO documents (id, workspace_id, file_name, stored_path, status, error) VALUES(?,?,?,?,?,?)",
             (id,workspace_id,file_name, storead_path,status,error))
 
-
 def update_document_status(doc_id:str, status:str, error:str = None):
     with get_conn() as conn:
         if not error:

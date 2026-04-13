@@ -9,8 +9,9 @@ from typing import Dict, List
 WORD_RE = re.compile(r"[a-zA-Z0-9_]{2,}")
 
 
-def tokenize(text:str) -> set[str]:
-    return {t.lower() for t in WORD_RE.findall(text or "")}
+def tokenize(text:str) -> list[str]:
+    """Split text into words"""
+    return [t.lower() for t in WORD_RE.findall(text or "")]
 
 def bm25_search(
         query:str,
@@ -21,42 +22,44 @@ def bm25_search(
 ) -> List[Dict]:
     if not docs: return []
 
-    q_terms = tokenize(query)
+    q_terms = set(tokenize(query))
     if not q_terms: return []
 
     doc_tokens: Dict[str,List[str]] = {}    # tokens
-    doc_tf:Dict[str,Counter] = {}           # term frequency
-    df = defaultdict(int)                   # document frequency
+    doc_tf:Dict[str,Counter]        = {}    # term frequency
+    df        = defaultdict(int)            # document frequency
     total_len = 0
+
+    # calculate term frequency in each document
     for d in docs:
-        doc_id = d['id']
-        tokens = tokenize(d.get("text",""))
-        doc_tokens[doc_id] = tokens
-        doc_tf[doc_id] = Counter(tokens)
-        total_len += len(tokens)
+        doc_id              = d['id']
+        tokens              = tokenize(d.get("text",""))
+        doc_tokens[doc_id]  = tokens
+        doc_tf[doc_id]      = Counter(tokens)
+        total_len          += len(tokens)
         for term in set(tokens): 
             df[term] += 1 # calculate count of chunks that contains query/term
     
     n_docs = max(len(docs),1)
     avg_dl = total_len / n_docs if total_len else 1.0 # average chunk length
-
     scored: List[tuple[float,Dict]] = []
+
     for d in docs:
-        doc_id = d['id']
-        tokens = doc_tokens[doc_id]
-        tf = doc_tf[doc_id]
-        dl = max(len(tokens),1) # doc length
-        score = 0.0
+        doc_id  = d['id']
+        tokens  = doc_tokens[doc_id]
+        tf      = doc_tf[doc_id]
+        dl      = max(len(tokens),1) # doc length
+        score   = 0.0
 
         for term in q_terms:
             f = tf.get(term,0)
             if f == 0: continue
 
             # calculate bm25 score
-            n_qi = df.get(term,0)
-            idf = math.log(1 + (n_docs - n_qi + 0.5) / (n_qi + 0.5))
-            denom = f + k1 * (1 - b + b*dl / avg_dl)
-            score += idf * (f * (k1 + 1) / denom)
+            n_qi    = df.get(term,0)
+            idf     = math.log(1 + (n_docs - n_qi + 0.5) / (n_qi + 0.5))
+            denom   = f + k1 * (1 - b + b*dl / avg_dl)
+            score  += idf * (f * (k1 + 1) / denom)
 
         if score > 0.0:
             scored.append((

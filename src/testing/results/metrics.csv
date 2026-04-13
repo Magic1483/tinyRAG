@@ -1,0 +1,29 @@
+question,mode,k,use_bm25,use_hyde,kw_score,hit_at_5,mrr,answer_len
+Describe the NICK command and its error replies,vector,8,False,False,0.4,0,0.0,1028
+Describe the NICK command and its error replies,vector+bm25,8,True,False,0.4,1,0.2,1251
+Describe the NICK command and its error replies,vector+hyde,8,False,True,0.4,1,0.25,823
+Describe the NICK command and its error replies,vector+bm25+hyde,8,True,True,0.4,1,0.2,1502
+What are the parameters and purpose of the KICK command?,vector,8,False,False,0.4,1,1.0,141
+What are the parameters and purpose of the KICK command?,vector+bm25,8,True,False,0.4,1,1.0,416
+What are the parameters and purpose of the KICK command?,vector+hyde,8,False,True,0.6,1,1.0,331
+What are the parameters and purpose of the KICK command?,vector+bm25+hyde,8,True,True,0.8,1,1.0,550
+List the five initial hash values (H0-H4) used in SHA-1,vector,8,False,False,1.0,1,1.0,269
+List the five initial hash values (H0-H4) used in SHA-1,vector+bm25,8,True,False,0.0,1,1.0,262
+List the five initial hash values (H0-H4) used in SHA-1,vector+hyde,8,False,True,1.0,1,0.5,305
+List the five initial hash values (H0-H4) used in SHA-1,vector+bm25+hyde,8,True,True,0.0,1,1.0,140
+Describe the padding process for a message in SHA-1,vector,8,False,False,0.4,1,0.5,960
+Describe the padding process for a message in SHA-1,vector+bm25,8,True,False,0.4,1,0.5,1092
+Describe the padding process for a message in SHA-1,vector+hyde,8,False,True,0.4,1,0.5,1031
+Describe the padding process for a message in SHA-1,vector+bm25+hyde,8,True,True,0.2,1,0.5,771
+Explain the opening of an XML stream in XMPP,vector,8,False,False,1.0,1,1.0,1319
+Explain the opening of an XML stream in XMPP,vector+bm25,8,True,False,0.4,1,1.0,1480
+Explain the opening of an XML stream in XMPP,vector+hyde,8,False,True,0.4,1,0.5,1406
+Explain the opening of an XML stream in XMPP,vector+bm25+hyde,8,True,True,0.8,1,1.0,896
+List common XMPP stream error conditions,vector,8,False,False,0.8,1,0.25,727
+List common XMPP stream error conditions,vector+bm25,8,True,False,0.0,1,0.3333333333333333,599
+List common XMPP stream error conditions,vector+hyde,8,False,True,0.8,1,0.3333333333333333,575
+List common XMPP stream error conditions,vector+bm25+hyde,8,True,True,0.0,1,1.0,1103
+Describe the STARTTLS negotiation flow in XMPP,vector,8,False,False,0.8,0,0.0,1193
+Describe the STARTTLS negotiation flow in XMPP,vector+bm25,8,True,False,0.4,0,0.0,1228
+Describe the STARTTLS negotiation flow in XMPP,vector+hyde,8,False,True,0.4,0,0.0,1688
+Describe the STARTTLS negotiation flow in XMPP,vector+bm25+hyde,8,True,True,0.4,0,0.0,1267

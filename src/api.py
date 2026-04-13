@@ -1,42 +1,47 @@
-
-from fastapi import FastAPI,File,UploadFile,Query,BackgroundTasks,HTTPException
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI,File,UploadFile,Query,BackgroundTasks
 from fastapi.responses import StreamingResponse
-import uuid
+from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional,AsyncIterator
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from chroma import ChromaStore
-from chuck_text import parse_pdf_to_pages,clean_text,chunk_text
-import aiohttp
-import json
-from typing import Optional,AsyncIterator
-import database
-from fastapi.middleware.cors import CORSMiddleware
+
 import asyncio
+import aiohttp
+import uuid
+import json
+
+import database
 import shared
 from hybrid_search import bm25_search,rrf_fuse
+from chuck_text import parse_pdf_to_pages,clean_text,chunk_text
 
-CONFIG = shared.get_config()
+
+# CONFIG
+CONFIG      = shared.get_config()
 UPLOAD_DIR  = Path(CONFIG['server']['upload_path'])
 MODEL_NAME  = CONFIG['server']['model_name']
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-
+OLLAMA_URL  = CONFIG['server']['model_url']
 PERSIST_DIR = CONFIG['chroma']['PERSIST_DIR']
 EMBED_MODEL = CONFIG['chroma']['EMBED_MODEL']
 
-CHUNK_SIZE_CHARS = 3500
-CHUNK_OVERLAP_CHARS = 400
+CHUNK_SIZE_CHARS    = int(CONFIG['text_chunking']['chunk_size_chars'])
+CHUNK_OVERLAP_CHARS = int(CONFIG['text_chunking']['chuck_overlap_chars'])
 
 
 app = FastAPI()
 
-origins = ["*"]
+origins = [
+     "http://localhost:3000",
+     "http://127.0.0.1:3000",
+    f"http://{CONFIG['server_ip']}:3000"
+]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -59,17 +64,14 @@ async def generate_answer_stream(prompt:str) -> AsyncIterator:
     async for raw in response.content:
         line = raw.decode('utf-8').strip()
         if not line: continue
-
-        obj = json.loads(line)
-
-        token = obj.get("response","")
-        if token: 
-            yield token
         
-        if obj.get("done"): 
-            break
+        obj = json.loads(line)
+        token = obj.get("response","")
 
+        if token:               yield token
+        if obj.get("done"):     break
     await session.close()
+
 
 async def generate_answer(prompt: str) -> str:
     timeout = aiohttp.ClientTimeout(total=180)
@@ -123,33 +125,29 @@ Question:
 Passage:
 """
 
+
 async def generate_hyde_passage(query:str) -> str:
-    try:
-        return (await generate_answer(build_hyde_prompt(query))).strip()
-    except Exception:
-        return ""
+    try:                return (await generate_answer(build_hyde_prompt(query))).strip()
+    except Exception:   return ""
+
 
 async def hybrid_search(workspace_id:str, query:str, 
     query_embedding:list[float],k:int=5, use_hyde=True,use_bm25=True
     ) -> list[dict]:
     """
     Hybrid search: vector candidates from chroma + lexical overlap rerank
-    """
-    candidate_k = max(k*4, 20)
-    
-    dense_hits = store.chroma_search(workspace_id,query_embedding,k=candidate_k)
-    lists = [dense_hits]
-
-    """
     1. Get all collection from chrome
     2. Search with BM25
     3. append results to others
     """
+    candidate_k = max(k*4, 20)
+    dense_hits = store.chroma_search(workspace_id,query_embedding,k=candidate_k)
+    lists = [dense_hits]
+
     if use_bm25:
         all_docs = store.chrome_all(workspace_id)
         sparse_list = bm25_search(query,all_docs,k=candidate_k)
         lists.append(sparse_list)
-    
     
     if use_hyde:
         hyde_passage = await generate_hyde_passage(query)
@@ -159,7 +157,7 @@ async def hybrid_search(workspace_id:str, query:str,
             hyde_hits = store.chroma_search(workspace_id,hyde_vec,k=candidate_k)
             lists.append(hyde_hits)
     
-    return rrf_fuse(lists, top_k=60)
+    return rrf_fuse(lists, top_k=k)
 
 
 async def process_document(doc_id:str, workspace_id:str, original_name:str, pdf_path:Path):
@@ -186,19 +184,21 @@ async def process_document(doc_id:str, workspace_id:str, original_name:str, pdf_
         database.update_document_status(doc_id,"failed",str(e))
 
 
-
 @app.on_event("startup")
 def _startup():
     database.init_db()
+
 
 @app.get("/health")
 def health():
     return {"ok":True}
 
+
 # -- workspaces
 @app.get("/workspaces")
 async def get_workspaces():
     return database.fetch_workspaces_with_chats()
+
 
 @app.post("/workspaces")
 async def new_workspace(payload:dict):
@@ -208,6 +208,7 @@ async def new_workspace(payload:dict):
     ws_id = database.create_workspace(name)
     return {"id":ws_id,"name":name}
 
+
 # -- chat
 @app.post("/workspaces/{workspace_id}/chats")
 async def new_chat(workspace_id:str,  payload:dict):
@@ -215,11 +216,11 @@ async def new_chat(workspace_id:str,  payload:dict):
     chat_id = database.create_chat(workspace_id,name)
     return {"id":chat_id,"name":name,"workspace_id":workspace_id}
 
+
 @app.get("/docs/{workspace_id}/documents")
 async def get_documents(workspace_id: str):
     if not workspace_id: 
         return {"err":"workspace missing"}
-    
     return database.get_documents(workspace_id)
 
 
@@ -242,11 +243,11 @@ async def upload_doc(
     return {"doc_id":doc_id,"status":"uploaded"} 
 
 
-
 # -- chats
 @app.get("/chats/{chat_id}/messages")
 async def get_chat_messages(chat_id:str, limit:int = 200):
     return database.get_recent_messages(chat_id,limit=limit)
+
 
 @app.post("/chat")
 async def chat(payload:dict):
@@ -279,12 +280,12 @@ async def chat(payload:dict):
 
 @app.post("/chat/stream")
 async def chat_stream(payload:dict):
-    workspace_id = payload.get("workspace_id")
-    chat_id = payload.get("chat_id")
-    query = payload.get("query")
-    k = int(payload.get("k",5))
-    use_hyde = payload.get("use_hyde",False)
-    use_bm25 = payload.get("use_bm25",False)
+    workspace_id    = payload.get("workspace_id")
+    chat_id         = payload.get("chat_id")
+    query           = payload.get("query")
+    k               = int(payload.get("k",5))
+    use_hyde        = payload.get("use_hyde",False)
+    use_bm25        = payload.get("use_bm25",False)
 
     if not query or not workspace_id or not chat_id:
         return {"error": "Missing query/workspace_id/chat_id"}
@@ -296,7 +297,6 @@ async def chat_stream(payload:dict):
     hits = await hybrid_search(workspace_id,query,qvec,k=k,use_hyde=use_hyde,use_bm25=use_bm25)
 
     prompt = build_prompt(query,hits,history)
-
     async def event_gen():
         citation = [
             {"file_name":h['meta']['file_name'], "page":h['meta']['page']} 
@@ -317,11 +317,13 @@ async def chat_stream(payload:dict):
     
     return StreamingResponse(event_gen(),media_type="text/event-stream")
 
+
 # -- delete
 @app.delete("/chats/{chat_id}")
 async def remove_chat(chat_id: str):
     database.delete_chat(chat_id)
     return {"ok": True}
+
 
 @app.delete("/workspaces/{workspace_id}")
 async def remove_workspace(workspace_id: str):
@@ -329,13 +331,15 @@ async def remove_workspace(workspace_id: str):
     store.delete(workspace_id)
     return {"ok": True}
 
+
 # -- settings
 @app.get("/config")
 async def get_config():
     return {
         "embedded_model":CONFIG['chroma']['EMBED_MODEL'],
-        "model":CONFIG['server']['model_name']
+        "model":         CONFIG['server']['model_name']
         }
+
 
 # -- debug
 @app.post("/search")

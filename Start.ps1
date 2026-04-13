@@ -11,12 +11,14 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Write-Host "Starting tinyRAG..."
 
 # Backend
-$backendCmd = "cd /d `"$root\src`" && uv run uvicorn api:app --host $BackendHost --port $BackendPort"
+$backendCmd = "uv run uvicorn --app-folder src api:app --host $BackendHost --port $BackendPort"
 Start-Process -FilePath "cmd.exe" -ArgumentList "/k $backendCmd" -WindowStyle Normal
+
 
 # Frontend
 $frontendCmd = "cd /d `"$root\frontend`" && pnpm dev --hostname $FrontendHost --port $FrontendPort"
 Start-Process -FilePath "cmd.exe" -ArgumentList "/k $frontendCmd" -WindowStyle Normal
+
 
 Start-Sleep -Seconds 2
 Start-Process "http://localhost:$FrontendPort"

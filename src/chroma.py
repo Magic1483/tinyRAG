@@ -9,8 +9,6 @@ from sentence_transformers import SentenceTransformer
 from chuck_text import Chunk
 
 
-
-
 def load_chunks(chunks_root:Path) -> List[Dict]:
     docs = [p for p in chunks_root.iterdir() if p.is_dir()]
     if not docs:
