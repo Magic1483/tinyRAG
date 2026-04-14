@@ -1,8 +1,8 @@
-question,vector,vector+bm25,vector+bm25+hyde,vector+hyde
+question,vector,vector+bm25,vector+hyde,vector+bm25+hyde
 Describe the NICK command and its error replies,0.4,0.4,0.4,0.4
 Describe the STARTTLS negotiation flow in XMPP,0.8,0.4,0.4,0.4
-Describe the padding process for a message in SHA-1,0.4,0.4,0.2,0.4
-Explain the opening of an XML stream in XMPP,1.0,0.4,0.8,0.4
-List common XMPP stream error conditions,0.8,0.0,0.0,0.8
-List the five initial hash values (H0-H4) used in SHA-1,1.0,0.0,0.0,1.0
-What are the parameters and purpose of the KICK command?,0.4,0.4,0.8,0.6
+Describe the padding process for a message in SHA-1,0.4,0.4,0.4,0.2
+Explain the opening of an XML stream in XMPP,1.0,0.4,0.4,0.8
+List common XMPP stream error conditions,0.8,0.0,0.8,0.0
+List the five initial hash values (H0-H4) used in SHA-1,1.0,0.0,1.0,0.0
+What are the parameters and purpose of the KICK command?,0.4,0.4,0.6,0.8

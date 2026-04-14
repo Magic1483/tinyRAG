@@ -64,16 +64,18 @@ Local-first RAG assistant with:
   - `avg_hit_at_5`: whether gold citation appears in top-5 retrieved chunks
   - `avg_mrr`: reciprocal rank of first gold chunk
   - `avg_answer_len`: normalized answer length (0..1, higher = longer)
+  - `abs_answer_len`: absolute answer length (used in mean metrics only)
 
+>[!IMPORTANT] This is a small directional benchmark (7 questions across 4 modes).
 
 ### Mean Metrics by Mode
 
-| mode | avg_kw_score | avg_hit_at_5 | avg_mrr | avg_answer_len |
-|---|---:|---:|---:|---:|
-| vector | 0.686 | 0.714 | 0.536 | 0.926 |
-| vector+bm25 | 0.286 | 0.857 | 0.576 | 1.039 |
-| vector+bm25+hyde | 0.371 | 0.857 | 0.671 | 1.023 |
-| vector+hyde | 0.571 | 0.857 | 0.440 | 1.012 |
+| mode             | avg_kw_score | avg_hit_at_5 | avg_mrr | abs_answer_len |
+| ---------------- | -----------: | -----------: | ------: | -------------: |
+| vector           |        0.686 |        0.714 |   0.536 |            805 |
+| vector+bm25      |        0.286 |        0.857 |   0.576 |            904 |
+| vector+bm25+hyde |        0.371 |        0.857 |   0.671 |            889 |
+| vector+hyde      |        0.571 |        0.857 |   0.440 |            879 |
 
 
 ### Visuals
@@ -81,19 +83,32 @@ Local-first RAG assistant with:
 ![Summary by mode](./docs/imgs/summary_by_mode.png)
 _Summary by mode_
 
-![Per-query Hit@5](./docs/imgs/pivot_hit_5.png)
-_Per-query Hit@5_
+<details>
+  <summary>Metrics per question</summary>
+  
+  ![Per-query Hit@5](./docs/imgs/pivot_hit_at_5.png)
+  _Per-query Hit@5_
 
-![Per-query Keyword Score](./docs/imgs/pivot_kw_score.png)
-_Per-query Keyword Score_
+  ![Per-query Keyword Score](./docs/imgs/pivot_kw_score.png)
+  _Per-query Keyword Score_
 
-![Per-query MRR](./docs/imgs/pivot_mrr.png)
-_Per-query MRR_
+  ![Per-query MRR](./docs/imgs/pivot_mrr.png)
+  _Per-query MRR_
+
+  ![Per-query Answer length](./docs/imgs/pivot_answer_len.png)
+  _Per-query Answer length_
+</details>
+
 
 ### Conclusion
-- `vector+bm25+hyde` gives best ranking quality (`MRR`) but is most expensive (extra HyDE request).
-- `vector+bm25` is the best default tradeoff for quality vs cost.
+- Best `MRR` produced by `vector+bm25+hyde`, but it is also the most expensive (extra HyDE request).
+- Best `avg_kw_score` produced by `vector`.
+- Best practical retrieval tradeoff (`hit@5` + `MRR` vs cost) is `vector+bm25`,for many tasks it's the best working mode.
 
+
+### How to Reproduce Tests
+1. Start testing with `src/testing/features_test.py`, this module evaluates N prepared questions in different modes and saves results in `src/testing/results` in `.csv` format
+2. Generate report with `src/testing/report_gen.py`, this module generates separate `.csv` files per each metric and after generates plots.
 
 ## Requirements
 - Python 3.11+
@@ -161,6 +176,9 @@ src/
   CONFIG.toml
   shared.py
   hybrid_search.py
+  testing/
+    features_test.py
+    report_gen.py
 Start.ps1
 frontend/
   app/
@@ -169,14 +187,15 @@ frontend/
 frontend_lite
 ```
 
-## Testing features
-- **frontend_lite** - small frontend version without framework dependecies
+## Additional frontend variant
+- **frontend_lite** - small frontend version without framework dependencies
 
 ## Roadmap
-- Hybrid retrieval (vector + keyword)
-- Config/settings UI
-- Improved evaluation and observability
-- Optional packaging for non-dev users
+- [x] Hybrid retrieval (vector + keyword)
+- [x] Config/settings UI
+- [x] Create evaluation report
+- [ ] Improved evaluation and observability
+- [ ] Optional packaging for non-dev users
 
 ## License
 
