@@ -21,9 +21,10 @@ export default function Home() {
               <li>All core data stays on your machine: SQLite + ChromaDB</li>
               <li>Markdown/LaTeX rendering in chat</li>
               <li>Use it on LAN by pointing clients to your backend host</li>
+              <li>Included self testing suit</li>
             </ul>
             <div className="text-sm mt-6">
-              Current version - 0.2.0 alpha
+              Current version - 0.3.0
             </div>
           </div>
         </div>

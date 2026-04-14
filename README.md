@@ -19,15 +19,13 @@ Local-first RAG assistant with:
   ![](./docs/upload_dashboad.png)
 </details>
 
-## What's New in v0.2.0
+## What's New in v0.3.0
 
-- Added true hybrid retrieval:
-  - dense vector retrieval (Chroma)
-  - sparse lexical retrieval (BM25)
-  - rank fusion with RRF
-- Added optional HyDE retrieval branch for ambiguous queries.
-- Added page metadata support for chunk citations.
-- Expanded retrieval testing with RFC2812 benchmark scenarios.
+- Added retrieval evaluation suite (`src/testing/features_test.py`)
+- Added automatic report generation (`src/testing/report_gen.py`)
+- Added per-mode metric exports (`metrics.csv`, `metrics_summary_by_mode.csv`)
+- Added chart generation for summary and per-question analysis
+- Updated README with benchmark methodology and results
 
 ### Retrieval Modes
 
