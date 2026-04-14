@@ -65,7 +65,7 @@ Local-first RAG assistant with:
   - `abs_answer_len`: absolute answer length (used in mean metrics only)
 
 > ⚠️ This is a small directional benchmark (7 questions across 4 modes).
-
+ 
 ### Mean Metrics by Mode
 
 | mode             | avg_kw_score | avg_hit_at_5 | avg_mrr | abs_answer_len |
