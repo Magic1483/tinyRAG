@@ -1,11 +1,18 @@
 # tinyRAG 🍜
 
-Local-first RAG assistant with:
-- Next.js frontend (`frontend/`)
+**tinyRAG** is a Local-first RAG workbench for PDF question answering, retrieval experiments, and portable Windows deployment.
+
+It has follow features:
+- Per-workspace retrieval settings: top_k, BM25, HyDE
+- Portable Windows build via PyInstaller
+- Static frontend served by FastAPI
+
+
+Used Stack:
 - FastAPI backend (`api.py`)
 - ChromaDB vector store (`data/chroma`)
 - SQLite app database (`data/app.db`)
-
+- Next.js frontend (`frontend/`)
 
 ## Demo 
 
@@ -19,13 +26,15 @@ Local-first RAG assistant with:
   ![](./docs/upload_dashboad.png)
 </details>
 
-## What's New in v0.3.0
+## What's New in v0.4.0
 
-- Added retrieval evaluation suite (`src/testing/features_test.py`)
-- Added automatic report generation (`src/testing/report_gen.py`)
-- Added per-mode metric exports (`metrics.csv`, `metrics_summary_by_mode.csv`)
-- Added chart generation for summary and per-question analysis
-- Updated README with benchmark methodology and results
+- Converted the Next.js frontend to static export mode.
+- FastAPI now serves both the API and static frontend.
+- Added portable Windows build support with PyInstaller.
+- Added portable runtime data folder for config, SQLite, ChromaDB, uploads, and model cache.
+- Split RAG logic into `RagService` for cleaner backend architecture.
+- Added per-workspace retrieval settings: `top_k`, BM25, and HyDE.
+- Removed dynamic frontend routes in favor of client-side active chat state.
 
 ### Retrieval Modes
 
@@ -45,6 +54,18 @@ Local-first RAG assistant with:
 - Use it on LAN by pointing clients to your backend host
 
 ## Architecture
+
+```mermaid
+flowchart TD
+    F[FastAPI] --> R[RagService]
+    F[FastAPI] --> D[(SQLite)]
+
+    R --> D[(SQLite)]
+    R --> C[(ChromaDB)]
+    R --> T[TextChunking]
+    R --> H[Hybrid Search / RRF]
+```
+
 - Frontend: Next.js + React + shadcn/ui
 - Backend: FastAPI + aiohttp + sentence-transformers
 - Retrieval: Chroma vector search (workspace-scoped)
@@ -108,38 +129,24 @@ _Summary by mode_
 1. Start testing with `src/testing/features_test.py`, this module evaluates N prepared questions in different modes and saves results in `src/testing/results` in `.csv` format
 2. Generate report with `src/testing/report_gen.py`, this module generates separate `.csv` files per each metric and after generates plots.
 
-## Requirements
-- Python 3.11+
-- [uv](https://docs.astral.sh/uv/)
-- Node.js 20+
-- pnpm 9+
-- Ollama running with your selected model
+## Quick Start
 
-## Quick Start (Windows)
-1. Setup requirements
-- Fast API `uv sync`
-- Next.JS `pnpm install` (inside frontend directory)
+- Download or build tinyRAG, then run: `tinyRAG.exe`.
+- Configure your local ollama endpoint inside `CONFIG.toml`.
+- Open `http://localhost:8000`.
+- All runtime data is stored inside `data/` folder.
 
-2. Start backend + frontend:
-
-```powershell
-.\Start.ps1
-```
-
-3. Open app:
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:8000`
 
 ## Configuration
 
 ### Backend
-- File: `CONFIG.toml`
+- File: `data/CONFIG.toml`
 - Main options:
-  - server upload path and model name
+  - Server upload path and model name
   - Chroma persistence path/collection
-  - embedding model
+  - Embedding model
 
-### Frontend API base
+### Frontend API Base for Development
 Set in `frontend/.env`:
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
@@ -151,38 +158,47 @@ NEXT_PUBLIC_API_BASE_URL=http://192.168.x.x:8000
 
 Important: restart frontend after changing `.env`.
 
-## Build Instructions
+## Build Instructions (Windows)
 
-### Frontend production build
-```powershell
-cd frontend
-pnpm build
-pnpm start -- --hostname 0.0.0.0 --port 3000
-```
+### Requirements
 
-### Backend production run
-```powershell
-uv run uvicorn api:app --host 0.0.0.0 --port 8000
+- Python 3.11+
+- uv
+- Node.js 20+
+- pnpm
+- Ollama with the selected model
+  
+### Build Portable Windows App
+
 ```
+.\Build.ps1 -Frontend -Backend
+```
+- `-Frontend` - builds the static Next.js frontend.
+- `-Backend`  - packages the FastAPI backend with PyInstaller. 
+
+Use both flags for a full portable build.
+
 
 ## Project Structure
 ```text
+frontend/
+  app/
+  components/
+  package.json
 src/
+  main.py
   api.py
+  rag_service.py
   chroma.py
   database.py
-  CONFIG.toml
   shared.py
   hybrid_search.py
   testing/
     features_test.py
     report_gen.py
-Start.ps1
-frontend/
-  app/
-  components/
-  package.json
-frontend_lite
+data/
+  CONFIG.toml
+Build.ps1
 ```
 
 ## Additional frontend variant
@@ -192,8 +208,9 @@ frontend_lite
 - [x] Hybrid retrieval (vector + keyword)
 - [x] Config/settings UI
 - [x] Create evaluation report
+- [x] Optional packaging for non-dev users
 - [ ] Improved evaluation and observability
-- [ ] Optional packaging for non-dev users
+
 
 ## License
 

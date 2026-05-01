@@ -9,6 +9,7 @@ import { MarkdownMessage } from "./MarkdownMessage";
 import { ChatMessages } from "./ChatMessages";
 import { makeId } from "@/app/idGenerator";
 import { API_BASE } from "@/app/api";
+import { useAppStore } from "@/app/store";
 
 type ChatMessage = {
     id: string,
@@ -33,12 +34,17 @@ export function ChatWindow({
     const [input,setInput]  = React.useState("");
     const [isSending,setIsSending] = React.useState(false);
     const [citations,setCitations] = React.useState<Citation[]>([]);
-    const [UseBM25,setUseBM25]     = React.useState(false)
-    const [UseHyDE,setUseHyDE]     = React.useState(false)
+    
+    const ws_settings = useAppStore((s)=>s.workspace_settings[workspace_id])
+    const use_hyde = ws_settings?.use_hyde ?? false;
+    const use_bm25 = ws_settings?.use_bm25 ?? false;
+    const top_k    = ws_settings?.top_k ?? 20;
     
     const bottomRef = React.useRef<HTMLDivElement | null>(null);
     const pendingRef = React.useRef<string | null>("");
     const flushTimerRef = React.useRef<number | null>(null);
+
+    
     
     const renderedMessages = React.useMemo(() => messages.slice(-50), [messages]);
 
@@ -86,15 +92,6 @@ export function ChatWindow({
         const text = input.trim();
         if (!text || isSending) return;
 
-
-        let use_hyde:boolean = false
-        if (localStorage.getItem("use_hyde_"+workspace_id) === "true") use_hyde = true
-        setUseHyDE(use_hyde)
-
-        let use_bm25 = false
-        if (localStorage.getItem("use_bm25_"+workspace_id) === "true") use_bm25 = true
-        setUseBM25(use_bm25)
-
         setInput("");
         setIsSending(true);
         setCitations([])
@@ -116,7 +113,7 @@ export function ChatWindow({
                     workspace_id: workspace_id,
                     chat_id: chat_id,
                     query: text,
-                    k: 60,
+                    k: top_k,
                     use_hyde: use_hyde,
                     use_bm25: use_bm25
                 }),
@@ -202,7 +199,7 @@ export function ChatWindow({
         <div className="flex h-full flex-col pt-12">
             <div className="flex-1 min-h-0">
                 <ScrollArea className="h-full">
-                    <ChatMessages messages={renderedMessages} citations={citations} UseBM25={UseBM25} UseHyDE={UseHyDE} />
+                    <ChatMessages messages={renderedMessages} citations={citations} UseBM25={use_bm25} UseHyDE={use_hyde} />
                     <div ref={bottomRef}></div>
                 </ScrollArea>
             </div>

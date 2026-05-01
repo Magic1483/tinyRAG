@@ -14,6 +14,7 @@ import React from "react";
 import { NewChat, NewWorkspace } from "@/components/NewChat"
 import { Option } from "./Option";
 import { API_BASE } from "@/app/api";
+import { useAppStore } from "@/app/store";
 
 type WsButtonProps = React.ComponentProps<typeof Button> & {
     text: string;
@@ -28,6 +29,8 @@ type Workspace = { name: string, id: string, chats: Chat[], }
 
 export function AppSidebar() {
     const [workspaces, setWorkspaces] = React.useState<Workspace[]>([])
+
+    const set_active_chat = useAppStore((s)=>s.set_active_chat);
 
     console.log(API_BASE);
     
@@ -65,11 +68,15 @@ export function AppSidebar() {
     
 
     function WsButton({ text, ws_id, chat_id, ...props }: WsButtonProps) {
+        const set_active_chat = useAppStore((s)=>s.set_active_chat)
         return (
-            <div className="font-semibold inline-flex h-9 w-full items-center justify-between gap-2 rounded-md border bg-background px-3 text-sm shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground">
-                <Link href={`/workspaces/${ws_id}/chats/${chat_id}`} className="flex-1 min-w-0 max-w-[50%]">
+            <div className="font-semibold inline-flex h-9 w-full items-center justify-between gap-2 rounded-md border bg-background px-3 text-sm 
+                shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer">
+                <div className="flex-1 min-w-0 max-w-[50%]" onClick={()=>{
+                    set_active_chat(ws_id,chat_id)
+                }}>
                     <span className="min-w-0 flex-1 truncate text-left ">{text}</span>
-                </Link>
+                </div>
                 <Option
                     chat_id={chat_id}
                     workspace_id={ws_id}
@@ -81,11 +88,12 @@ export function AppSidebar() {
         )
     }
 
-
     return (
         <Sidebar>
             <SidebarHeader className="flex flex-row gap-2 items-center">
-                <span className="text-xl "><a href="/">Workspaces</a></span>
+                <span className="text-xl font-regular cursor-pointer" onClick={()=>set_active_chat(null,null)}>
+                    Workspaces
+                    </span>
                 <NewWorkspace onCreated={onWorkspaceCreated} />
             </SidebarHeader>
             <SidebarContent className="p-2">

@@ -1,20 +1,14 @@
 
 import {
   Dialog,
-  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -23,14 +17,13 @@ import {
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "./ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Upload } from "lucide-react"
-import React from "react";
-import { Separator } from "@/components/ui/separator";
+import React, { useState } from "react";
 import { API_BASE } from "@/app/api";
 import type { ChatMessage } from "./ChatMessages";
+import { useAppStore } from "@/app/store";
 
 export type UploadDoc = {
     id: string,
@@ -47,8 +40,15 @@ export function UploadDocument({workspace_id,messages}:
     const [open, setOpen] = React.useState(false);
     const [doc,setDoc] = React.useState<File | null>(null);
     const [documents,setDocuments] = React.useState<UploadDoc[]>([]);
-    const [hyde,setHyde] = React.useState<boolean>(false);
-    const [bm25,setBm25] = React.useState<boolean>(false);
+
+    const wsSettings = useAppStore((s)=>s.workspace_settings[workspace_id]);
+    const set_hyde_state  = useAppStore((s)=>s.set_hyde);
+    const set_bm25_state  = useAppStore((s)=>s.set_bm25);
+    const set_top_k_state = useAppStore((s)=>s.set_top_k);
+
+    const hyde = wsSettings?.use_hyde ?? false;
+    const bm25 = wsSettings?.use_bm25 ?? false;
+    const topK = wsSettings?.top_k    ?? 20;
 
     async function loadDocuments() {
             const res = await fetch(`${API_BASE}/docs/${workspace_id}/documents`,{
@@ -64,9 +64,6 @@ export function UploadDocument({workspace_id,messages}:
                     status: m.status
                 }))
             );
-
-            if (localStorage.getItem("use_hyde_"+workspace_id) === "true") setHyde(true)
-            if (localStorage.getItem("use_bm25_"+workspace_id) === "true") setBm25(true)
         }
 
     React.useEffect(()=> {
@@ -82,15 +79,6 @@ export function UploadDocument({workspace_id,messages}:
         return () => clearInterval(id);
     },[documents,workspace_id])
 
-    function toggle_hyde(e:boolean) {
-        localStorage.setItem("use_hyde_"+workspace_id,e === true ? "true" : "false")
-        setHyde(e)
-    }
-    function toggle_bm25(e:boolean) {
-        localStorage.setItem("use_bm25_"+workspace_id,e === true ? "true" : "false")
-        setBm25(e)
-    }
-
     async function uploadDoc() {
         if (doc === null) return
         if (!doc.name.toLocaleLowerCase().endsWith(".pdf")) return
@@ -98,7 +86,6 @@ export function UploadDocument({workspace_id,messages}:
             console.error("Document already uploaded")
             return;
         }
-
 
 
         const form = new FormData()
@@ -183,17 +170,28 @@ export function UploadDocument({workspace_id,messages}:
 
                         <div className="flex flex-row gap-2 font-nroma w-fulll">
                             <Switch id="use_hyde" 
-                            onCheckedChange={toggle_hyde}
+                            onCheckedChange={(e)=>set_hyde_state(e,workspace_id)}
                             checked={hyde}
                             />
-                            <Label htmlFor="use_hyde">Use HyDE</Label>
+                            <Label htmlFor="use_hyde">Use HyDE - fake answer</Label>
                         </div>
                         <div className="flex flex-row gap-2 font-nromal w-full">
                             <Switch id="use_bm25" 
-                            onCheckedChange={toggle_bm25}
+                            onCheckedChange={(e)=>set_bm25_state(e,workspace_id)}
                             checked={bm25}
                             />
                             <Label htmlFor="use_bm25">Use BM25 - text search</Label>
+                        </div>
+                        <div className="flex flex-row gap-2 font-nromal w-full">
+                            <Input className="w-18"  type="number" id="topK" 
+                                min={1}
+                                max={100}
+                                value={topK}
+                                onChange={(e)=>{
+                                    const val = Number(e.target.value);
+                                    set_top_k_state(Number.isFinite(val) && val > 0 ? val : 1, workspace_id);
+                                }}/>
+                            <Label className="" htmlFor="topK" >Top K</Label>
                         </div>
                         <Button 
                         variant={"outline"} 

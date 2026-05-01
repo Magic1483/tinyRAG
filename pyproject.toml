@@ -11,6 +11,7 @@ dependencies = [
     "curl-cffi>=0.14.0",
     "fastapi>=0.129.0",
     "mutagen>=1.47.0",
+    "pyinstaller>=6.20.0",
     "pypdf>=6.7.1",
     "python-multipart>=0.0.22",
     "sentence-transformers>=5.2.3",

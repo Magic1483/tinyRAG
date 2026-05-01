@@ -1,41 +1,24 @@
 from fastapi import FastAPI,File,UploadFile,Query,BackgroundTasks
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse,FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional,AsyncIterator
-from pathlib import Path
-from sentence_transformers import SentenceTransformer
-from chroma import ChromaStore
+from typing import Optional
 
-import asyncio
-import aiohttp
+
 import uuid
 import json
 
 import database
 import shared
-from hybrid_search import bm25_search,rrf_fuse
-from chuck_text import parse_pdf_to_pages,clean_text,chunk_text
-
-
-# CONFIG
-CONFIG      = shared.get_config()
-UPLOAD_DIR  = Path(CONFIG['server']['upload_path'])
-MODEL_NAME  = CONFIG['server']['model_name']
-
-OLLAMA_URL  = CONFIG['server']['model_url']
-PERSIST_DIR = CONFIG['chroma']['PERSIST_DIR']
-EMBED_MODEL = CONFIG['chroma']['EMBED_MODEL']
-
-CHUNK_SIZE_CHARS    = int(CONFIG['text_chunking']['chunk_size_chars'])
-CHUNK_OVERLAP_CHARS = int(CONFIG['text_chunking']['chuck_overlap_chars'])
+from rag_service import RagService
+from shared import UPLOAD_DIR,CONFIG,PERSIST_DIR
 
 
 app = FastAPI()
-
 origins = [
-     "http://localhost:3000",
-     "http://127.0.0.1:3000",
-    f"http://{CONFIG['server_ip']}:3000"
+    f"http://localhost:{CONFIG['server_port']}",
+    f"http://127.0.0.1:{CONFIG['server_port']}",
+    f"http://{CONFIG['server_ip']}:{CONFIG['server_port']}"
 ]
 
 app.add_middleware(
@@ -46,153 +29,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# GLOBALS
 UPLOAD_DIR.mkdir(parents=True,exist_ok=True)
+rag_service = RagService(database)
 
-model = SentenceTransformer(CONFIG['chroma']['EMBED_MODEL'])
-store = ChromaStore(PERSIST_DIR)
-
-
-async def generate_answer_stream(prompt:str) -> AsyncIterator:
-    timeout = aiohttp.ClientTimeout(total=300)
-    session =  aiohttp.ClientSession(timeout=timeout)
-
-    response = await session.post(
-        OLLAMA_URL,
-        json={"model":MODEL_NAME,"prompt":prompt,"stream":True}
-    )
-
-    async for raw in response.content:
-        line = raw.decode('utf-8').strip()
-        if not line: continue
-        
-        obj = json.loads(line)
-        token = obj.get("response","")
-
-        if token:               yield token
-        if obj.get("done"):     break
-    await session.close()
-
-
-async def generate_answer(prompt: str) -> str:
-    timeout = aiohttp.ClientTimeout(total=180)
-    async with aiohttp.ClientSession(timeout=timeout) as session:
-        async with session.post(
-            OLLAMA_URL,
-            json={"model": MODEL_NAME, "prompt": prompt, "stream": False},
-        ) as resp:
-            resp.raise_for_status()
-            data = await resp.json()
-            return data["response"]
-
-
-def build_prompt(query:str, chunks:list, history:list) -> str:
-    context_blocks = [f"[{i}] {c['text']}" for i,c in enumerate(chunks)]
-    context_text = "\n\n".join(context_blocks)
-
-    history_text = ""
-    if history:
-        lines = []
-        for m in history:
-            role = m["role"]
-            lines.append(f"{role.upper()}: {m['content']}")
-        history_text = "\n".join(lines)
-
-    return f"""
-You are a the best LLM in the world
-Answer ONLY using the provided context.
-If the answer is not in the context, say you don't know.
-
-Conversation so far:
-{history_text}
-
-Context:
-{context_text}
-
-Question:
-{query}
-
-Answer:
-"""
-
-def build_hyde_prompt(query:str) -> str:
-    return f"""
-Write a concise hypothetical answer passage that could appear in relevant documents.
-Return only passage text.“Use neutral generic wording, no invented facts, no numbers unless in query.
-
-Question:
-{query}
-
-Passage:
-"""
-
-
-async def generate_hyde_passage(query:str) -> str:
-    try:                return (await generate_answer(build_hyde_prompt(query))).strip()
-    except Exception:   return ""
-
-
-async def hybrid_search(workspace_id:str, query:str, 
-    query_embedding:list[float],k:int=5, use_hyde=True,use_bm25=True
-    ) -> list[dict]:
-    """
-    Hybrid search: vector candidates from chroma + lexical overlap rerank
-    1. Get all collection from chrome
-    2. Search with BM25
-    3. append results to others
-    """
-    candidate_k = max(k*4, 20)
-    dense_hits = store.chroma_search(workspace_id,query_embedding,k=candidate_k)
-    lists = [dense_hits]
-
-    if use_bm25:
-        all_docs = store.chrome_all(workspace_id)
-        sparse_list = bm25_search(query,all_docs,k=candidate_k)
-        lists.append(sparse_list)
-    
-    if use_hyde:
-        hyde_passage = await generate_hyde_passage(query)
-        print('fake answer is ',hyde_passage)
-        if hyde_passage:
-            hyde_vec = model.encode([hyde_passage], normalize_embeddings=True)[0].tolist()
-            hyde_hits = store.chroma_search(workspace_id,hyde_vec,k=candidate_k)
-            lists.append(hyde_hits)
-    
-    return rrf_fuse(lists, top_k=k)
-
-
-async def process_document(doc_id:str, workspace_id:str, original_name:str, pdf_path:Path):
-    try:
-        database.update_document_status(doc_id,"indexing") 
-
-        pages = await asyncio.to_thread(parse_pdf_to_pages,pdf_path)
-        all_chunks = []
-        for i, page_text in enumerate(pages,start=1):
-            page_chunks = chunk_text(page_text,i,CHUNK_SIZE_CHARS,CHUNK_OVERLAP_CHARS)
-            all_chunks.extend(page_chunks) 
-        
-        texts = [c.text for c in all_chunks]
-        vectors = await asyncio.to_thread(
-            lambda: model.encode(texts, normalize_embeddings=True, batch_size=32).tolist()
-        )
-        await asyncio.to_thread(
-            store.chroma_upsert, workspace_id, doc_id, original_name, all_chunks, vectors
-        )
-
-        database.update_document_status(doc_id,"ready")
-    except Exception as e:
-        print('error upload doc',e)
-        database.update_document_status(doc_id,"failed",str(e))
 
 
 @app.on_event("startup")
 def _startup():
     database.init_db()
 
-
 @app.get("/health")
 def health():
     return {"ok":True}
-
 
 # -- workspaces
 @app.get("/workspaces")
@@ -239,7 +88,7 @@ async def upload_doc(
     pdf_path.write_bytes(await file.read())
 
     database.insert_documents(doc_id,workspace_id,file.filename,str(pdf_path),"uploaded","")
-    background_tasks.add_task(process_document,doc_id,workspace_id,file.filename,pdf_path)
+    background_tasks.add_task(rag_service.process_document,doc_id,workspace_id,file.filename,pdf_path)
     return {"doc_id":doc_id,"status":"uploaded"} 
 
 
@@ -257,6 +106,7 @@ async def chat(payload:dict):
     k = int(payload.get("k",5))
     use_hyde = payload.get("use_hyde",False)
     use_bm25 = payload.get("use_bm25",False)
+    print(f"CHAT top_k:{k} hyde:{use_hyde} bm25:{use_bm25}")
 
     if not query or not workspace_id or not chat_id:
         return {"error": "Missing query/workspace_id/chat_id"}
@@ -264,11 +114,10 @@ async def chat(payload:dict):
     database.add_message(chat_id,"user",query)
     history = database.get_recent_messages(chat_id,limit=10)
 
-    qvec = model.encode([query],normalize_embeddings=True)[0].tolist()
-    hits = await hybrid_search(workspace_id,query,qvec,k=k,use_hyde=use_hyde,use_bm25=use_bm25)
+    hits = await rag_service.search(workspace_id,query,k=k,use_hyde=use_hyde,use_bm25=use_bm25)
 
-    prompt = build_prompt(query,hits,history)
-    answer = await generate_answer(prompt)
+    prompt = rag_service.build_prompt(query,hits,history)
+    answer = await rag_service.generate_answer(prompt)
     if answer:
         database.add_message(chat_id,"assistant",answer)
 
@@ -287,16 +136,17 @@ async def chat_stream(payload:dict):
     use_hyde        = payload.get("use_hyde",False)
     use_bm25        = payload.get("use_bm25",False)
 
+    print(f"CHAT_STREAM top_k:{k} hyde:{use_hyde} bm25:{use_bm25}")
     if not query or not workspace_id or not chat_id:
         return {"error": "Missing query/workspace_id/chat_id"}
     
     database.add_message(chat_id,"user",query)
     history = database.get_recent_messages(chat_id,limit=10)
 
-    qvec = model.encode([query],normalize_embeddings=True)[0].tolist()
-    hits = await hybrid_search(workspace_id,query,qvec,k=k,use_hyde=use_hyde,use_bm25=use_bm25)
+    hits = await rag_service.search(workspace_id,query,
+                                    k=k,use_hyde=use_hyde,use_bm25=use_bm25)
 
-    prompt = build_prompt(query,hits,history)
+    prompt = rag_service.build_prompt(query,hits,history)
     async def event_gen():
         citation = [
             {"file_name":h['meta']['file_name'], "page":h['meta']['page']} 
@@ -305,7 +155,7 @@ async def chat_stream(payload:dict):
         yield f"event: citations\ndata: {json.dumps(citation)}\n\n"
 
         full = []
-        async for token in generate_answer_stream(prompt):
+        async for token in rag_service.generate_answer_stream(prompt):
             full.append(token)
             yield f"event: token\ndata: {json.dumps({'text':token})}\n\n"
         
@@ -328,7 +178,7 @@ async def remove_chat(chat_id: str):
 @app.delete("/workspaces/{workspace_id}")
 async def remove_workspace(workspace_id: str):
     database.delete_workspace(workspace_id)
-    store.delete(workspace_id)
+    rag_service.delete_workspace_index(workspace_id)
     return {"ok": True}
 
 
@@ -353,7 +203,22 @@ async def search(payload:dict):
     if not query or not workspace_id:
         return {"err":"missing query/workspace_id"}
     
-    qvec = model.encode([query],normalize_embeddings=True)[0].tolist()
-    hits = await hybrid_search(workspace_id,query,qvec,k=k,use_hyde=use_hyde,use_bm25=use_bm25)
-
+    hits = await rag_service.search(workspace_id,query,k,use_hyde,use_bm25)
     return {"query":query,"k":k,"matches":hits}
+
+
+# -- static serve
+FRONTEND_DIR = shared.resource_path("frontend/out")
+app.mount("/_next",StaticFiles(directory=FRONTEND_DIR / "_next"),name="next_static")
+
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str):
+    path = FRONTEND_DIR / full_path
+    if path.is_file():
+        return FileResponse(path)
+
+    html_path = FRONTEND_DIR / f"{full_path}.html"
+    if html_path.is_file():
+        return FileResponse(html_path)
+
+    return FileResponse(FRONTEND_DIR / "index.html")
