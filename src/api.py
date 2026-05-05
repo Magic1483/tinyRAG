@@ -18,7 +18,9 @@ app = FastAPI()
 origins = [
     f"http://localhost:{CONFIG['server_port']}",
     f"http://127.0.0.1:{CONFIG['server_port']}",
-    f"http://{CONFIG['server_ip']}:{CONFIG['server_port']}"
+    f"http://{CONFIG['server_ip']}:{CONFIG['server_port']}",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 app.add_middleware(
@@ -27,6 +29,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_origin_regex=r"^http://192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$",
 )
 
 # GLOBALS
@@ -118,8 +121,17 @@ async def chat(payload:dict):
 
     prompt = rag_service.build_prompt(query,hits,history)
     answer = await rag_service.generate_answer(prompt)
+    citations = [
+            {"file_name":h['meta']['file_name'], "page":h['meta']['page']} 
+            for h in hits]
+    
     if answer:
-        database.add_message(chat_id,"assistant",answer)
+        database.add_message(chat_id,"assistant",answer,metadata={
+                "citations":citations,
+                "use_hyde":use_hyde,
+                "use_bm25":use_bm25,
+                "top_k":k
+            })
 
     return {
         "content":answer,
@@ -140,7 +152,7 @@ async def chat_stream(payload:dict):
     if not query or not workspace_id or not chat_id:
         return {"error": "Missing query/workspace_id/chat_id"}
     
-    database.add_message(chat_id,"user",query)
+    database.add_message(chat_id,"user",query) # no metadata
     history = database.get_recent_messages(chat_id,limit=10)
 
     hits = await rag_service.search(workspace_id,query,
@@ -148,11 +160,11 @@ async def chat_stream(payload:dict):
 
     prompt = rag_service.build_prompt(query,hits,history)
     async def event_gen():
-        citation = [
+        citations = [
             {"file_name":h['meta']['file_name'], "page":h['meta']['page']} 
             for h in hits
         ]
-        yield f"event: citations\ndata: {json.dumps(citation)}\n\n"
+        yield f"event: citations\ndata: {json.dumps(citations)}\n\n"
 
         full = []
         async for token in rag_service.generate_answer_stream(prompt):
@@ -161,7 +173,12 @@ async def chat_stream(payload:dict):
         
         answer = "".join(full).strip()
         if answer:
-            database.add_message(chat_id,"assistant",answer)
+            database.add_message(chat_id,"assistant",answer,metadata={
+                "citations":citations,
+                "use_hyde":use_hyde,
+                "use_bm25":use_bm25,
+                "top_k":k
+            })
 
         yield "event: done\ndata: {}\n\n"
     

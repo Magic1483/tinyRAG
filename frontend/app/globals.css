@@ -3,7 +3,8 @@
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
-html, body { height: 100%; overflow: hidden; }
+html, body { height: 100%; }
+body {overflow: hidden;}
 
 
 .md-content :first-child {

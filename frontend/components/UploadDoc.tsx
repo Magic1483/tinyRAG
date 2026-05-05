@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Plus, Upload } from "lucide-react"
 import React, { useState } from "react";
 import { API_BASE } from "@/app/api";
-import type { ChatMessage } from "./ChatMessages";
+import type { ChatMessage } from "./ChatWindow";
 import { useAppStore } from "@/app/store";
 
 export type UploadDoc = {
@@ -117,13 +117,13 @@ export function UploadDocument({workspace_id,messages}:
     }
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={setOpen} >
         <DialogTrigger asChild>
             <Button variant="outline"  size="icon" className="cursor-pointer">
                 <Upload className="w-5 h-5"/>
             </Button>
         </DialogTrigger>
-        <DialogContent className="lg:w-[70vw] lg:max-w-[1000px] lg:h-[40vh] h-[70vh] p-0">
+        <DialogContent className="lg:w-[70vw] lg:max-w-[1000px] lg:min-h-[40vh] lg:h-fit h-[70vh] p-0" id="12">
             <DialogTitle className="hidden"></DialogTitle>
             
             <div className="grid h-full grid-rows-[1fr_auto] lg:grid-rows-1 lg:grid-cols-[2fr_1fr]">

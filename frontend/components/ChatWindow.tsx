@@ -11,16 +11,21 @@ import { makeId } from "@/app/idGenerator";
 import { API_BASE } from "@/app/api";
 import { useAppStore } from "@/app/store";
 
-type ChatMessage = {
-    id: string,
-    role: "user" | "assistant",
-    content:string
-}
-
-type Citation = {
+export type Citation = {
     file_name: string,
     page: string
 }
+
+export type ChatMessage = {
+    id: string,
+    role: "user" | "assistant",
+    content:string
+    citations: Citation[],
+    use_hyde: boolean,
+    use_bm25:boolean
+}
+
+
 
 
 export function ChatWindow({
@@ -33,23 +38,23 @@ export function ChatWindow({
     const [messages,setMessages] = React.useState<ChatMessage[]>([]);
     const [input,setInput]  = React.useState("");
     const [isSending,setIsSending] = React.useState(false);
-    const [citations,setCitations] = React.useState<Citation[]>([]);
     
     const ws_settings = useAppStore((s)=>s.workspace_settings[workspace_id])
     const use_hyde = ws_settings?.use_hyde ?? false;
     const use_bm25 = ws_settings?.use_bm25 ?? false;
     const top_k    = ws_settings?.top_k ?? 20;
     
-    const bottomRef = React.useRef<HTMLDivElement | null>(null);
-    const pendingRef = React.useRef<string | null>("");
+    const bottomRef     = React.useRef<HTMLDivElement | null>(null);
+    const pendingRef    = React.useRef<string>("");
     const flushTimerRef = React.useRef<number | null>(null);
+    const citationRef   = React.useRef<Citation[]>([]);
 
     
     
     const renderedMessages = React.useMemo(() => messages.slice(-50), [messages]);
 
     React.useEffect(()=>{
-        bottomRef.current?.scrollIntoView({behavior:"smooth"});
+        bottomRef.current?.scrollIntoView({behavior:"auto"});
     },[messages]);
 
 
@@ -66,11 +71,12 @@ export function ChatWindow({
                     id:m.id,
                     role: m.role,
                     content:m.content,
+                    use_bm25:m.use_bm25 ?? false,
+                    use_hyde:m.use_hyde ?? false,
+                    citations:m.citations ?? []
                 }))
             );
-            setCitations([]);
         }
-
         loadMessages();
     },[chat_id])
 
@@ -92,17 +98,18 @@ export function ChatWindow({
         const text = input.trim();
         if (!text || isSending) return;
 
+        citationRef.current = [];
+
         setInput("");
         setIsSending(true);
-        setCitations([])
 
-        const userMsg:ChatMessage = {id: makeId(),role:"user",content:text}
+        const userMsg:ChatMessage = {id: makeId(),role:"user",content:text,use_bm25:false,use_hyde:false,citations:[]}
         const assistantId = makeId()
 
         setMessages((m)=> [
             ...m,
             userMsg,
-            {id:assistantId,role:'assistant',content:""},
+            {id:assistantId,role:'assistant',content:"",use_bm25:use_bm25,use_hyde:use_hyde,citations:[]},
         ])
 
         try {
@@ -149,16 +156,22 @@ export function ChatWindow({
                         if (line.startsWith("event:")) eventType = line.slice(6).trim();
                         if (line.startsWith("data:")) dataLines.push(line.slice(5));
                     }
-
+                    
+                    // set citations
                     const data = dataLines.join("\n");
                     if (eventType == "citations") {
                         try {
-                            setCitations(JSON.parse(data))
+                            citationRef.current = JSON.parse(data);
+
+                            setMessages((prev)=>
+                                prev.map((msg)=>
+                                    msg.id === assistantId 
+                                        ? {...msg, citations:citationRef.current }
+                                        : msg))
                         } catch { }
                         continue
                     }
                     if (eventType == "done") continue
-
                     if (eventType === "token") {
                         try {
                             const parsed = JSON.parse(data) as {text?:string}
@@ -186,7 +199,7 @@ export function ChatWindow({
             }
             if (pendingRef.current) {
                 const chunk = pendingRef.current
-                pendingRef.current = null
+                pendingRef.current = ""
                 setMessages((prev)=>
                     prev.map((msg)=>
                         msg.id === assistantId ? {...msg, content: msg.content + chunk} : msg))
@@ -199,12 +212,12 @@ export function ChatWindow({
         <div className="flex h-full flex-col pt-12">
             <div className="flex-1 min-h-0">
                 <ScrollArea className="h-full">
-                    <ChatMessages messages={renderedMessages} citations={citations} UseBM25={use_bm25} UseHyDE={use_hyde} />
+                    <ChatMessages messages={renderedMessages} />
                     <div ref={bottomRef}></div>
                 </ScrollArea>
             </div>
 
-            <div className="border-t p-3 mb-2">
+            <div className="sticky bottom-0 border-t bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
 
                 <div className="w-full md:w-[80%] m-auto max-w-[1200px]">
                     <div className="flex gap-2 items-center">
@@ -212,7 +225,7 @@ export function ChatWindow({
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask a question about your documents…"
-                        className="resize-none w-[80%]"
+                        className="resize-none w-full sm:w-[80%]"
                         rows={2}
                         onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {

@@ -91,9 +91,9 @@ export function AppSidebar() {
     return (
         <Sidebar>
             <SidebarHeader className="flex flex-row gap-2 items-center">
-                <span className="text-xl font-regular cursor-pointer" onClick={()=>set_active_chat(null,null)}>
+                <a className="text-xl font-regular cursor-pointer" href="/" onClick={()=>set_active_chat(null,null)}>
                     Workspaces
-                    </span>
+                    </a>
                 <NewWorkspace onCreated={onWorkspaceCreated} />
             </SidebarHeader>
             <SidebarContent className="p-2">

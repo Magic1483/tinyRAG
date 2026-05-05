@@ -18,7 +18,9 @@ type AppState = {
     ws_id: string | null;
     chat_id: string | null;
     workspace_settings: Record<string,WorkspaceSettings>;
+    has_hydrated: boolean;
 
+    set_has_hydrated: (val: boolean) => void;
     set_active_chat: (ws_id:string|null,chat_id:string|null) => void;
     set_bm25: (val:boolean,ws_id:string) => void;
     set_hyde: (val:boolean,ws_id:string) => void;
@@ -31,7 +33,13 @@ export const useAppStore = create<AppState>()(
             workspace_settings: {},
             ws_id: null,
             chat_id: null,
+            has_hydrated: false,
 
+            set_has_hydrated: (val) =>
+                set({
+                    has_hydrated: val,
+                }),
+                
             set_active_chat: (ws_id,chat_id) =>
                 set({
                     ws_id,chat_id,
@@ -69,6 +77,9 @@ export const useAppStore = create<AppState>()(
         }),
         {
             name: "rag-app-state",
+            onRehydrateStorage: ()=>(state) => {
+                state?.set_has_hydrated(true);
+            }
         }
     )
 )

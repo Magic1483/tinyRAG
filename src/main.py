@@ -4,7 +4,7 @@ from shared import CONFIG
 if __name__ == "__main__":
     uvicorn.run(
         app,
-        host=CONFIG['server_ip'],
+        host='0.0.0.0',
         port=int(CONFIG['server_port']),
         reload=False,
     )

@@ -3,9 +3,15 @@ Param(
   [switch]$Backend
 )
 
+$next_api_base = ""
+
+
 if ($Frontend) {
     Write-Host "[*] Compile Frontend"
+    $next_env = "NEXT_PUBLIC_API_BASE_URL=$next_api_base"
+    Write-Host $next_env
     cd .\frontend
+    # Write-Output $next_env > .env
     pnpm build
     cd ..
 }

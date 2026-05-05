@@ -16,14 +16,15 @@ Used Stack:
 
 ## Demo 
 
-![](./docs/chat_example.png)
+![](./docs/imgs/chat_example.png)
 
 <details>
   <summary>More screenshots</summary>
   
-  ![](./docs/0222.gif)
-  ![](./docs/main_page.png)
-  ![](./docs/upload_dashboad.png)
+  ![](./docs/imgs/tinyRAG.gif)
+  ![](./docs/imgs/main_page.png)
+  ![](./docs/imgs/m1.png)
+  ![](./docs/imgs/m2.png)
 </details>
 
 ## What's New in v0.4.0
@@ -35,6 +36,8 @@ Used Stack:
 - Split RAG logic into `RagService` for cleaner backend architecture.
 - Added per-workspace retrieval settings: `top_k`, BM25, and HyDE.
 - Removed dynamic frontend routes in favor of client-side active chat state.
+- Added per-message metadata for assistant responses, including citations and retrieval settings used during generation.
+
 
 ### Retrieval Modes
 

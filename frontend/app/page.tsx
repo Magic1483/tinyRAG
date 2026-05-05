@@ -4,8 +4,11 @@ import { ChatWindow } from "@/components/ChatWindow";
 import { useAppStore } from "./store";
 
 export default function Home() {
+  const has_hydrated = useAppStore((s)=>s.has_hydrated);
   const chat_id = useAppStore((s)=>s.chat_id)
   const ws_id = useAppStore((s)=>s.ws_id)
+
+  if (!has_hydrated){ return null; }
 
   if (chat_id !== null && ws_id !== null) {
     return (

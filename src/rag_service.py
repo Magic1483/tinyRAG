@@ -150,6 +150,7 @@ class RagService:
                 resp.raise_for_status()
                 data = await resp.json()
                 return data["response"]
+            await session.close()
 
     async def generate_hyde_passage(self,query:str) -> str:
         try:                return (await self.generate_answer(self.build_hyde_prompt(query))).strip()

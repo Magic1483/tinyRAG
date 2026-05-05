@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import uuid
+import json
 
 DB_PATH = Path("data/app.db")
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -36,6 +37,7 @@ def init_db() -> None:
               chat_id TEXT NOT NULL,
               role TEXT NOT NULL CHECK(role IN ('user','assistant','system')),
               content TEXT NOT NULL,
+              metadata TEXT NOT NULL DEFAULT '{}',
               created_at TEXT NOT NULL DEFAULT (datetime('now')),
               FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
             );
@@ -98,23 +100,41 @@ def delete_workspace(workspace_id:str) -> None:
     with get_conn() as conn:
         conn.execute("DELETE from workspaces WHERE id=?",(workspace_id,))
 
-def add_message(chat_id: str, role: str, content: str) -> str:
+def add_message(chat_id: str, role: str, content: str,metadata:Dict[str,Any] | None = None) -> str:
     msg_id = str(uuid.uuid4())
+    metadata_json = json.dumps(metadata or {})
+
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO messages(id, chat_id, role, content) VALUES(?,?,?,?)",
-            (msg_id, chat_id, role, content),
+            "INSERT INTO messages(id, chat_id, role, content, metadata) VALUES(?,?,?,?,?)",
+            (msg_id, chat_id, role, content,metadata_json),
         )
     return msg_id
 
-def get_recent_messages(chat_id: str, limit: int = 12) -> List[Dict[str, str]]:
+def get_recent_messages(chat_id: str, limit: int = 12) -> List[Dict[str, Any]]:
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT id, role, content FROM messages WHERE chat_id=? ORDER BY created_at DESC LIMIT ?",
+            "SELECT id, role, content,metadata FROM messages WHERE chat_id=? ORDER BY created_at DESC LIMIT ?",
             (chat_id, limit),
         ).fetchall()
+    
+    out = []
+    for r in reversed(rows):
+        try:
+            metadata = json.loads(r['metadata'] or "{}")
+        except Exception as err:
+            metadata = {}
+            print("metadata fetch error ",err)
+        out.append({
+            "id": r["id"],
+            "role": r["role"],
+            "content": r["content"],
+            "citations": metadata.get("citations", []),
+            "use_hyde": metadata.get("use_hyde", False),
+            "use_bm25": metadata.get("use_bm25", False),
+        })
     # reverse into chronological order
-    return [{"id":r["id"] ,"role": r["role"], "content": r["content"]} for r in reversed(rows)]
+    return out
 
 
 # documents

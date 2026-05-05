@@ -36,7 +36,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SidebarProvider>
           <AppSidebar />
-          <main className="w-full h-svh min-h-0 flex flex-col overflow-hidden">
+          <main className="w-full h-dvh min-h-0 flex flex-col overflow-hidden">
             <div className="shrink-0 p-2 border-b bg-background z-20">
               <SidebarTrigger className="z-30 relative"/>
             </div>
