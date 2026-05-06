@@ -2,13 +2,13 @@
 
 **tinyRAG** is a Local-first RAG workbench for PDF question answering, retrieval experiments, and portable Windows deployment.
 
-It has follow features:
+Key features:
 - Per-workspace retrieval settings: top_k, BM25, HyDE
 - Portable Windows build via PyInstaller
 - Static frontend served by FastAPI
 
 
-Used Stack:
+Stack:
 - FastAPI backend (`api.py`)
 - ChromaDB vector store (`data/chroma`)
 - SQLite app database (`data/app.db`)
@@ -134,11 +134,13 @@ _Summary by mode_
 
 ## Quick Start
 
-- Download or build tinyRAG, then run: `tinyRAG.exe`.
+- Make sure Ollama is running and the configured model is pulled.
 - Configure your local ollama endpoint inside `CONFIG.toml`.
+- Download or build tinyRAG, then run: `tinyRAG.exe`.
 - Open `http://localhost:8000`.
 - All runtime data is stored inside `data/` folder.
 
+If building from source, the executable is created at: `dist/tinyRAG/tinyRAG.exe`
 
 ## Configuration
 
@@ -173,6 +175,7 @@ Important: restart frontend after changing `.env`.
   
 ### Build Portable Windows App
 
+Run from repository root:
 ```
 .\Build.ps1 -Frontend -Backend
 ```
