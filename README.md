@@ -1,7 +1,9 @@
 # tinyRAG 🍜
 
 
->[!IMPORTANT] Project moved to codeberg: https://codeberg.org/Enji/tinyRAG
+> [!IMPORTANT]
+> Project moved to codeberg: https://codeberg.org/Enji/tinyRAG
+
 
 
 **tinyRAG** is a Local-first RAG workbench for PDF question answering, retrieval experiments, and portable Windows deployment.
